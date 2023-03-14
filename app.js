@@ -19,19 +19,22 @@ app.use(express.static("public"));
 
 // let posts = [];
 
+const PORT = process.env.PORT || 3000
 
 
-main().catch(err => console.log(err));
 
 const mongoURI = 'mongodb://127.0.0.1:27017/'
-const dbName ='blogDB'
+const dbName = 'blogDB'
 
-main().catch(err => console.log(err));
-
-async function main() {
-  await mongoose.connect(`${mongoURI}${dbName}`);
-  
-  // use `await mongoose.connect('mongodb://user:password@127.0.0.1:27017/test');` if your database has auth enabled
+const connectDB = async () => {
+  try {
+    // const conn = await mongoose.connect(`${urlAtlas}${dbName}`)
+    const conn = await mongoose.connect(`${mongoURI}${dbName}`);
+    console.log(`mongodb connected : ${conn.connection.host}`);
+  } catch (error) {
+    console.log(error);
+    process.exit(1)
+  }
 }
 
 const postSchema = new mongoose.Schema({
@@ -69,7 +72,7 @@ app.get("/compose", function(req, res){
 
 
 
-app.post("/compose", function (req, res) {
+app.post("/compose", async function (req, res) {
   const titlePost = req.body.postTitle
   const contentPost = req.body.postBody
 
@@ -78,35 +81,29 @@ app.post("/compose", function (req, res) {
     content:contentPost
   })
 
-  post.save()
+  const newPost = await post.save()
 
-  // const post = {
-  //   title: req.body.postTitle,
-  //   content: req.body.postBody
-  // };
+  if (newPost === post) {
+    res.redirect("/");
+  }
 
-  // posts.push(post);
-
-  res.redirect("/");
+  
 
 });
 
-app.get("/posts/:postName", function(req, res){
-  const requestedTitle = _.lowerCase(req.params.postName);
+app.get("/posts/:postId", async function(req, res){
+  const requestedId = req.params.postId
 
-  posts.forEach(function(post){
-    const storedTitle = _.lowerCase(post.title);
-
-    if (storedTitle === requestedTitle) {
-      res.render("post", {
-        title: post.title,
-        content: post.content
-      });
-    }
+  const post = await Post.findOne({ _id: requestedId })
+  res.render("post", {
+    title: post.title,
+    content: post.content
   });
 
 });
 
-app.listen(3000, function() {
-  console.log("Server started on port 3000");
-});
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`listening for requests ${PORT}`);
+  })
+})
